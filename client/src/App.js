@@ -1,6 +1,5 @@
 import { db } from "./firebase";
 import { collection, addDoc } from "firebase/firestore";import React, { useState, useEffect, useCallback } from 'react';
-import api from './api';
 import { useTourSocket } from './useSocket';
 import AddTransactionModal from './AddTransactionModal';
 import { STYLES, fmt, COLORS, Icon, ICONS, Toast, initTheme, getTheme, setTheme } from './shared';
@@ -28,13 +27,6 @@ export default function App() {
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.startsWith('#tour-')) setActiveTourId(hash.slice(6));
-  }, []);
-
-  useEffect(() => {
-    api.getTours()
-      .then(setTours)
-      .catch(() => {})
-      .finally(() => setLoading(false));
   }, []);
 
   const handleCreate = async name => {
