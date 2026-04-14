@@ -61,9 +61,9 @@ export default function AddTransactionModal({ tourId, members, paymentMethods, t
           ? splits.map(s => ({ ...s, amount: s.included ? equalShare : 0 }))
           : splits;
         //await api.addExpense(tourId, {
-          title: title.trim(), amount: amt, paidBy,
-          splitType, splits: finalSplits, paymentMethod: payMethod,
-        });
+          //title: title.trim(), amount: amt, paidBy,
+          //splitType, splits: finalSplits, paymentMethod: payMethod,
+        //});
         showToast('Expense added ✓');
       }
       onSaved();
