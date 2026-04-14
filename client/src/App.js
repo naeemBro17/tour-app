@@ -6,6 +6,7 @@ import { STYLES, fmt, COLORS, Icon, ICONS, Toast, initTheme, getTheme, setTheme 
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function App() {
+  console.log("test change"); //
   const [tours,        setTours]        = useState([]);
   const [activeTourId, setActiveTourId] = useState(null);
   const [showCreate,   setShowCreate]   = useState(false);
