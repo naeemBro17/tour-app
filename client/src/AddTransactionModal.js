@@ -35,7 +35,7 @@ export default function AddTransactionModal({ tourId, members, paymentMethods, t
   const addCustomMethod = async () => {
     if (!newMethod.trim()) return;
     try {
-      await //api.addPaymentMethod(tourId, newMethod.trim());
+      //await api.addPaymentMethod(tourId, newMethod.trim());
       setPayMethod(newMethod.trim());
       setNewMethod('');
       setShowNewMethod(false);
@@ -52,7 +52,7 @@ export default function AddTransactionModal({ tourId, members, paymentMethods, t
       setLoading(true);
       if (type === 'deposit') {
         if (!memberId) return setError('Select a member');
-        await //api.addDeposit(tourId, { memberId, amount: amt, note, paymentMethod: payMethod });
+        //await api.addDeposit(tourId, { memberId, amount: amt, note, paymentMethod: payMethod });
         showToast('Deposit added ✓');
       } else {
         if (!title.trim()) return setError('Enter a title');
@@ -60,7 +60,7 @@ export default function AddTransactionModal({ tourId, members, paymentMethods, t
         const finalSplits = splitType === 'equal'
           ? splits.map(s => ({ ...s, amount: s.included ? equalShare : 0 }))
           : splits;
-        await //api.addExpense(tourId, {
+        //await api.addExpense(tourId, {
           title: title.trim(), amount: amt, paidBy,
           splitType, splits: finalSplits, paymentMethod: payMethod,
         });
