@@ -643,7 +643,7 @@ const addMember = async () => {
         </div>
       )}
 
-      {!members.length && (
+      {!(data?.members || []).length && (
         <div className="empty"><div className="empty-icon">👥</div><p>Add members to get started</p></div>
       )}
 
