@@ -492,12 +492,12 @@ function exportPDF(tour, members, balances, settlements, summary) {
     const b = balances.find(b => b.memberId === m.id) || { deposits: 0, share: 0, balance: 0 };
     return `<tr>
       <td>${m.name}</td>
-      <td>৳${b.deposits.toFixed(2)}</td>
-      <td>৳${b.share.toFixed(2)}</td>
-      <td style="color:${b.balance >= 0 ? '#1a9a52' : '#d02848'};font-weight:700">
-        ${b.balance >= 0 ? '+' : ''}৳${b.balance.toFixed(2)}
-      </td>
-    </tr>`;
+<td>৳${Number(b.deposits).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+<td>৳${Number(b.share).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+<td style="color:${b.balance >= 0 ? '#1a9a52' : '#d02848'};font-weight:700">
+  ${b.balance >= 0 ? '+' : ''}৳${Number(b.balance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+</td>
+</tr>`;
   }).join('');
 
   const settlementRows = settlements.length
@@ -659,13 +659,27 @@ const addMember = async () => {
 };
 
   const removeMember = async (id, name) => {
-    try {
-      //await api.deleteMember(tourId, id);
-      setData(prev => ({ ...prev, members: prev.members.filter(m => m.id !== id) }));
-      showToast(`${name} removed`);
-      onUpdate();
-    } catch (e) { showToast('Error: ' + e.message); }
-  };
+  try {
+    setData(prev => ({
+      ...prev,
+
+      // remove member
+      members: (prev.members || []).filter(m => m.id !== id),
+
+      // 🔥 remove related deposits
+      deposits: (prev.deposits || []).filter(d => d.member_id !== id),
+
+      // 🔥 remove related expenses (payer)
+      expenses: (prev.expenses || []).filter(e => e.paid_by !== id)
+    }));
+
+    showToast(`${name} removed`);
+    onUpdate();
+
+  } catch (e) {
+    showToast('Error: ' + e.message);
+  }
+};
 
   const getBalance = memberId => {
     const b = balances?.find(b => b.memberId === memberId);
