@@ -214,7 +214,9 @@ function TourPage({ tourId, onBack, onDeleted, showToast }) {
     <div className="page">
       <button className="back-btn" onClick={onBack}><Icon d={ICONS.home} size={15}/> All Tours</button>
       <div className="warn-box">Failed to load: {loadErr}</div>
-      <button className="btn btn-ghost" onClick={loadTour}><Icon d={ICONS.refresh}/> Retry</button>
+      <button className="btn btn-ghost" onClick={() => {}}>
+  <Icon d={ICONS.refresh}/> Retry
+</button>
     </div>
   );
 
@@ -331,10 +333,44 @@ function TourPage({ tourId, onBack, onDeleted, showToast }) {
       </div>
 
       <div className="tab-content">
-        {tab === 'feed'    && <FeedTab    tourId={tourId} members={members} deposits={deposits} expenses={expenses} onUpdate={loadTour} showToast={showToast} locked={isEnded} />}
-        {tab === 'members' && <MembersTab tourId={tourId} members={members} balances={balances} onUpdate={loadTour} showToast={showToast} locked={isEnded} />}
-        {tab === 'settle'  && <SettleTab  settlements={settlements} balances={balances} tourId={tourId} onDeleted={onDeleted} showToast={showToast} tour={tour} members={members} deposits={deposits} expenses={expenses} summary={summary} />}
-      </div>
+  {tab === 'feed' && (
+    <FeedTab
+      tourId={tourId}
+      members={members}
+      deposits={deposits}
+      expenses={expenses}
+      onUpdate={() => {}}
+      showToast={showToast}
+      locked={isEnded}
+    />
+  )}
+
+  {tab === 'members' && (
+    <MembersTab
+      tourId={tourId}
+      members={members}
+      balances={balances}
+      onUpdate={() => {}}
+      showToast={showToast}
+      locked={isEnded}
+    />
+  )}
+
+  {tab === 'settle' && (
+    <SettleTab
+      settlements={settlements}
+      balances={balances}
+      tourId={tourId}
+      onDeleted={onDeleted}
+      showToast={showToast}
+      tour={tour}
+      members={members}
+      deposits={deposits}
+      expenses={expenses}
+      summary={summary}
+    />
+  )}
+</div>
 
       {/* FAB — hidden when locked */}
       {!isEnded && <button className="fab" onClick={() => setShowAdd(true)}>+</button>}
@@ -344,7 +380,7 @@ function TourPage({ tourId, onBack, onDeleted, showToast }) {
           tourId={tourId} members={members} paymentMethods={paymentMethods}
           totalDeposit={summary.totalDeposit} totalExpense={summary.totalExpense}
           onClose={() => setShowAdd(false)}
-          onSaved={() => { loadTour(); showToast('Saved successfully ✓'); }}
+          onSaved={() => { showToast('Saved successfully ✓'); }}
           showToast={showToast}
         />
       )}
