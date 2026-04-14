@@ -185,7 +185,6 @@ function TourPage({ tourId, onBack, onDeleted, showToast }) {
 // });
 
 // ✅ TEMP DATA (so app doesn't hang)
-
 useEffect(() => {
   setData({
     tour: { id: tourId, name: "My Tour" },
@@ -204,6 +203,48 @@ useEffect(() => {
 
   setConnected(true);
 }, [tourId]);
+
+// 🔥 CALCULATION LOGIC (ADD THIS)
+useEffect(() => {
+  if (!data) return;
+
+  const totalDeposit = (data.deposits || []).reduce(
+    (sum, d) => sum + (d.amount || 0),
+    0
+  );
+
+  const totalExpense = (data.expenses || []).reduce(
+    (sum, e) => sum + (e.amount || 0),
+    0
+  );
+
+  const memberCount = (data.members || []).length;
+  const perPerson = memberCount ? totalExpense / memberCount : 0;
+
+  const balances = (data.members || []).map(m => {
+    const deposited = (data.deposits || [])
+      .filter(d => d.member_id === m.id)
+      .reduce((sum, d) => sum + (d.amount || 0), 0);
+
+    return {
+      memberId: m.id,
+      name: m.name,
+      deposits: deposited,
+      share: perPerson,
+      balance: deposited - perPerson
+    };
+  });
+
+  setData(prev => ({
+    ...prev,
+    balances,
+    summary: {
+      totalDeposit,
+      totalExpense,
+      remaining: totalDeposit - totalExpense
+    }
+  }));
+}, [data?.members, data?.deposits, data?.expenses]);
 
   const handleCopy = () => {
     const url = `${window.location.origin}${window.location.pathname}#tour-${tourId}`;
