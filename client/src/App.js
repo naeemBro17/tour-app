@@ -179,7 +179,7 @@ function TourPage({ tourId, onBack, onDeleted, showToast }) {
   const [showEndModal,  setShowEndModal]  = useState(false);
 
   const loadTour = useCallback(() => {
-    api.getTour(tourId)
+    //api.getTour(tourId)
       .then(setData)
       .catch(e => setLoadErr(e.message));
   }, [tourId]);
@@ -477,7 +477,7 @@ function FeedTab({ tourId, members, deposits, expenses, onUpdate, showToast, loc
   const deleteItem = async item => {
     try {
       if (item._kind === 'deposit') await api.deleteDeposit(tourId, item.id);
-      else await api.deleteExpense(tourId, item.id);
+      else await //api.deleteExpense(tourId, item.id);
       showToast('Deleted');
       onUpdate();
     } catch (e) { showToast('Error: ' + e.message); }
@@ -539,7 +539,7 @@ function MembersTab({ tourId, members, balances, onUpdate, showToast, locked }) 
     if (!newName.trim()) return;
     setLoading(true);
     try {
-      await api.addMember(tourId, newName.trim());
+      await //api.addMember(tourId, newName.trim());
       setNewName('');
       showToast(`${newName.trim()} added ✓`);
       onUpdate();
@@ -549,7 +549,7 @@ function MembersTab({ tourId, members, balances, onUpdate, showToast, locked }) 
 
   const removeMember = async (id, name) => {
     try {
-      await api.deleteMember(tourId, id);
+      await //api.deleteMember(tourId, id);
       showToast(`${name} removed`);
       onUpdate();
     } catch (e) { showToast('Error: ' + e.message); }
@@ -619,7 +619,7 @@ function SettleTab({ settlements, balances, tourId, onDeleted, showToast, tour, 
 
   const deleteTour = async () => {
     try {
-      await api.deleteTour(tourId);
+      await //api.deleteTour(tourId);
       showToast('Tour deleted');
       onDeleted();
     } catch (e) { showToast('Error: ' + e.message); }
