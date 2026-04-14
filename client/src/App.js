@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { db } from "./firebase";
+import { collection, addDoc } from "firebase/firestore";import React, { useState, useEffect, useCallback } from 'react';
 import api from './api';
 import { useTourSocket } from './useSocket';
 import AddTransactionModal from './AddTransactionModal';
@@ -38,9 +39,19 @@ export default function App() {
 
   const handleCreate = async name => {
     try {
-      const snap = await api.createTour(name);
-      setTours(prev => [snap.tour, ...prev]);
-      setActiveTourId(snap.tour.id);
+     const docRef = await addDoc(collection(db, "tours"), {
+  name: name,
+  created_at: new Date().toISOString(),
+});
+
+const newTour = {
+  id: docRef.id,
+  name: name,
+  created_at: new Date().toISOString(),
+};
+
+setTours(prev => [newTour, ...prev]);
+setActiveTourId(docRef.id);
       setShowCreate(false);
       showToast('Tour created! 🎉');
     } catch (e) {
