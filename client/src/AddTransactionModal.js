@@ -3,7 +3,18 @@ import { fmt, Icon, ICONS } from './shared';
 
 const DEFAULT_METHODS = ['Cash', 'Bank', 'bKash', 'Nagad'];
 
-export default function AddTransactionModal({ tourId, members, paymentMethods, totalDeposit, totalExpense, onClose, onSaved, showToast }) {
+export default function AddTransactionModal({
+  data,
+  setData,
+  tourId,
+  members,
+  paymentMethods,
+  totalDeposit,
+  totalExpense,
+  onClose,
+  onSaved,
+  showToast
+}) {
   const [type,          setType]          = useState('deposit');
   const [memberId,      setMemberId]      = useState(members[0]?.id || '');
   const [amount,        setAmount]        = useState('');
@@ -45,35 +56,74 @@ export default function AddTransactionModal({ tourId, members, paymentMethods, t
   };
 
   const submit = async () => {
-    setError('');
-    if (amt <= 0) return setError('Enter a valid amount');
+  setError('');
 
-    try {
-      setLoading(true);
-      if (type === 'deposit') {
-        if (!memberId) return setError('Select a member');
-        //await api.addDeposit(tourId, { memberId, amount: amt, note, paymentMethod: payMethod });
-        showToast('Deposit added ✓');
-      } else {
-        if (!title.trim()) return setError('Enter a title');
-        if (!paidBy)       return setError('Select who paid');
-        const finalSplits = splitType === 'equal'
-          ? splits.map(s => ({ ...s, amount: s.included ? equalShare : 0 }))
+  if (amt <= 0) return setError('Enter a valid amount');
+
+  try {
+    setLoading(true);
+
+    if (type === 'deposit') {
+      if (!memberId) return setError('Select a member');
+
+      setData(prev => ({
+        ...prev,
+        deposits: [
+          ...(prev.deposits || []),
+          {
+            id: Date.now().toString(),
+            member_id: memberId,
+            amount: amt,
+            note,
+            paymentMethod: payMethod,
+            created_at: new Date().toISOString()
+          }
+        ]
+      }));
+
+      showToast('Deposit added ✓');
+
+    } else {
+      if (!title.trim()) return setError('Enter a title');
+      if (!paidBy) return setError('Select who paid');
+
+      const finalSplits =
+        splitType === 'equal'
+          ? splits.map(s => ({
+              ...s,
+              amount: s.included ? equalShare : 0
+            }))
           : splits;
-        //await api.addExpense(tourId, {
-          //title: title.trim(), amount: amt, paidBy,
-          //splitType, splits: finalSplits, paymentMethod: payMethod,
-        //});
-        showToast('Expense added ✓');
-      }
-      onSaved();
-      onClose();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
+
+      setData(prev => ({
+        ...prev,
+        expenses: [
+          ...(prev.expenses || []),
+          {
+            id: Date.now().toString(),
+            title: title.trim(),
+            amount: amt,
+            paid_by: paidBy,
+            split_type: splitType,
+            splits: finalSplits,
+            paymentMethod: payMethod,
+            created_at: new Date().toISOString()
+          }
+        ]
+      }));
+
+      showToast('Expense added ✓');
     }
-  };
+
+    onSaved();
+    onClose();
+
+  } catch (e) {
+    setError(e.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="overlay" onClick={onClose}>

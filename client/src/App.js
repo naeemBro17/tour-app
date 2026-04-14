@@ -438,16 +438,20 @@ useEffect(() => {
       {/* FAB — hidden when locked */}
       {!isEnded && <button className="fab" onClick={() => setShowAdd(true)}>+</button>}
 
-      {showAdd && (
-        <AddTransactionModal
-          tourId={tourId} members={members} paymentMethods={paymentMethods}
-          totalDeposit={summary.totalDeposit} totalExpense={summary.totalExpense}
-          onClose={() => setShowAdd(false)}
-          onSaved={() => { showToast('Saved successfully ✓'); }}
-          showToast={showToast}
-        />
-      )}
-
+{showAdd && (
+  <AddTransactionModal
+    data={data}                 // ✅ ADD
+    setData={setData}           // ✅ ADD
+    tourId={tourId}
+    members={members}
+    paymentMethods={paymentMethods}
+    totalDeposit={summary.totalDeposit}
+    totalExpense={summary.totalExpense}
+    onClose={() => setShowAdd(false)}
+    onSaved={() => { showToast('Saved successfully ✓'); }}
+    showToast={showToast}
+  />
+)}
       {/* End Tour confirmation modal */}
       {showEndModal && (
         <div className="overlay" onClick={() => setShowEndModal(false)}>
