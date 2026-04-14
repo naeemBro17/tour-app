@@ -587,17 +587,31 @@ function MembersTab({ tourId, members, balances, onUpdate, showToast, locked }) 
   const [newName, setNewName] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const addMember = async () => {
-    if (!newName.trim()) return;
-    setLoading(true);
-    try {
-      //await api.addMember(tourId, newName.trim());
-      setNewName('');
-      showToast(`${newName.trim()} added ✓`);
-      onUpdate();
-    } catch (e) { showToast('Error: ' + e.message); }
-    finally { setLoading(false); }
-  };
+const addMember = async () => {
+  if (!newName.trim()) return;
+
+  setLoading(true);
+
+  try {
+    const newMember = {
+      id: Date.now().toString(),
+      name: newName.trim()
+    };
+
+    setData(prev => ({
+      ...prev,
+      members: [...prev.members, newMember]
+    }));
+
+    setNewName('');
+    showToast(`${newName.trim()} added ✓`);
+    onUpdate();
+  } catch (e) {
+    showToast('Error: ' + e.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const removeMember = async (id, name) => {
     try {
