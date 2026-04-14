@@ -29,6 +29,9 @@ export default function App() {
     const hash = window.location.hash;
     if (hash.startsWith('#tour-')) setActiveTourId(hash.slice(6));
   }, []);
+  useEffect(() => {
+  setLoading(false);
+}, []);
 
   const handleCreate = async name => {
     try {
@@ -181,7 +184,7 @@ function TourPage({ tourId, onBack, onDeleted, showToast }) {
       .catch(e => setLoadErr(e.message));
   }, [tourId]);
 
-  useEffect(() => { loadTour(); }, [loadTour]);
+  //useEffect(() => { loadTour(); }, [loadTour]);
 
   useTourSocket(tourId, snap => {
     setData(snap);
