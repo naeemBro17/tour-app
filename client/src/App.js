@@ -178,10 +178,32 @@ function TourPage({ tourId, onBack, onDeleted, showToast }) {
   const [loadErr,       setLoadErr]       = useState('');
   const [showEndModal,  setShowEndModal]  = useState(false);
 
-  useTourSocket(tourId, snap => {
-    setData(snap);
-    setConnected(true);
+// 🔴 SOCKET OFF (backend removed)
+// useTourSocket(tourId, snap => {
+//   setData(snap);
+//   setConnected(true);
+// });
+
+// ✅ TEMP DATA (so app doesn't hang)
+
+useEffect(() => {
+  setData({
+    tour: { id: tourId, name: "My Tour" },
+    members: [],
+    deposits: [],
+    expenses: [],
+    paymentMethods: [],
+    balances: [],
+    settlements: [],
+    summary: {
+      totalDeposit: 0,
+      totalExpense: 0,
+      remaining: 0
+    }
   });
+
+  setConnected(true);
+}, [tourId]);
 
   const handleCopy = () => {
     const url = `${window.location.origin}${window.location.pathname}#tour-${tourId}`;
