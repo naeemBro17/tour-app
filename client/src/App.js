@@ -367,16 +367,16 @@ useEffect(() => {
     />
   )}
 
-  {tab === 'members' && (
-    <MembersTab
-      tourId={tourId}
-      members={members}
-      balances={balances}
-      onUpdate={() => {}}
-      showToast={showToast}
-      locked={isEnded}
-    />
-  )}
+ {tab === 'members' && (
+  <MembersTab
+    data={data}           // ✅ ADD
+    setData={setData}     // ✅ ADD
+    balances={data?.balances || []}
+    onUpdate={() => {}}
+    showToast={showToast}
+    locked={isEnded}
+  />
+)}
 
   {tab === 'settle' && (
     <SettleTab
@@ -443,7 +443,7 @@ useEffect(() => {
 // ─── Export helpers ───────────────────────────────────────────────────────────
 function exportPDF(tour, members, balances, settlements, summary) {
   const endedStr = tour.ended_at ? new Date(tour.ended_at).toLocaleString() : '—';
-  const memberRows = members.map((m, i) => {
+  const memberRows = (data?.members || []).map((m, i) => {
     const b = balances.find(b => b.memberId === m.id) || { deposits: 0, share: 0, balance: 0 };
     return `<tr>
       <td>${m.name}</td>
@@ -501,7 +501,7 @@ function exportJSON(tour, members, deposits, expenses, balances, settlements, su
   const data = {
     exportedAt: new Date().toISOString(),
     tour: { id: tour.id, name: tour.name, createdAt: tour.created_at, endedAt: tour.ended_at },
-    members: members.map(m => ({ id: m.id, name: m.name })),
+    members: (data?.members || []).map(m => ({ id: m.id, name: m.name })),
     summary,
     balances,
     settlements,
@@ -583,7 +583,7 @@ function FeedTab({ tourId, members, deposits, expenses, onUpdate, showToast, loc
 }
 
 // ─── Members Tab ──────────────────────────────────────────────────────────────
-function MembersTab({ tourId, members, balances, onUpdate, showToast, locked }) {
+function MembersTab({ data, setData, balances, onUpdate, showToast, locked }) {
   const [newName, setNewName] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -600,7 +600,7 @@ const addMember = async () => {
 
     setData(prev => ({
       ...prev,
-      members: [...prev.members, newMember]
+      members: [...(prev.members || []), newMember]
     }));
 
     setNewName('');
@@ -647,7 +647,7 @@ const addMember = async () => {
         <div className="empty"><div className="empty-icon">👥</div><p>Add members to get started</p></div>
       )}
 
-      {members.map((m, i) => {
+      {(data?.members || []).map((m, i) => {
         const b = getBalance(m.id);
         const color = COLORS[i % COLORS.length];
         const net = b.balance;
