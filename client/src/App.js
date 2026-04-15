@@ -1,5 +1,4 @@
-import { db } from "./firebase";
-import { collection, addDoc } from "firebase/firestore";import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTourSocket } from './useSocket';
 import AddTransactionModal from './AddTransactionModal';
 import { STYLES, fmt, COLORS, Icon, ICONS, Toast, initTheme, getTheme, setTheme } from './shared';
@@ -7,7 +6,9 @@ import { STYLES, fmt, COLORS, Icon, ICONS, Toast, initTheme, getTheme, setTheme 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function App() {
   console.log("test change"); //
-  const [tours,        setTours]        = useState([]);
+  const [tours,        setTours]        = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ts_tours')) || []; } catch { return []; }
+  });
   const [activeTourId, setActiveTourId] = useState(null);
   const [showCreate,   setShowCreate]   = useState(false);
   const [toast,        setToast]        = useState(null);
@@ -33,21 +34,17 @@ export default function App() {
   setLoading(false);
 }, []);
 
+  // Persist tours list
+  useEffect(() => {
+    localStorage.setItem('ts_tours', JSON.stringify(tours));
+  }, [tours]);
+
   const handleCreate = async name => {
     try {
-     const docRef = await addDoc(collection(db, "tours"), {
-  name: name,
-  created_at: new Date().toISOString(),
-});
-
-const newTour = {
-  id: docRef.id,
-  name: name,
-  created_at: new Date().toISOString(),
-};
-
-setTours(prev => [newTour, ...prev]);
-setActiveTourId(docRef.id);
+      const id = Date.now().toString();
+      const newTour = { id, name, created_at: new Date().toISOString() };
+      setTours(prev => [newTour, ...prev]);
+      setActiveTourId(id);
       setShowCreate(false);
       showToast('Tour created! 🎉');
     } catch (e) {
@@ -57,6 +54,7 @@ setActiveTourId(docRef.id);
 
   const handleDeleteTour = id => {
     setTours(prev => prev.filter(t => t.id !== id));
+    localStorage.removeItem('ts_tour_' + id);
     setActiveTourId(null);
   };
 
@@ -191,23 +189,33 @@ function TourPage({ tourId, onBack, onDeleted, showToast, onTourEnded }) {
 //   setConnected(true);
 // });
 
-// ✅ TEMP DATA (so app doesn't hang)
+// Load tour data from localStorage, or initialize fresh with correct name
 useEffect(() => {
+  const saved = localStorage.getItem('ts_tour_' + tourId);
+  if (saved) {
+    try {
+      setData(JSON.parse(saved));
+      setConnected(true);
+      return;
+    } catch {}
+  }
+  // Fresh tour — resolve name from tours list in localStorage
+  let tourName = 'Tour';
+  try {
+    const savedTours = JSON.parse(localStorage.getItem('ts_tours')) || [];
+    const found = savedTours.find(t => t.id === tourId);
+    if (found) tourName = found.name;
+  } catch {}
   setData({
-    tour: { id: tourId, name: "My Tour" },
+    tour: { id: tourId, name: tourName },
     members: [],
     deposits: [],
     expenses: [],
-    paymentMethods: [],
+    paymentMethods: ['Cash', 'Bank', 'bKash', 'Nagad'],
     balances: [],
     settlements: [],
-    summary: {
-      totalDeposit: 0,
-      totalExpense: 0,
-      remaining: 0
-    }
+    summary: { totalDeposit: 0, totalExpense: 0, remaining: 0 }
   });
-
   setConnected(true);
 }, [tourId]);
 
@@ -225,22 +233,24 @@ useEffect(() => {
     0
   );
 
-  const memberCount = (data.members || []).length;
-  const perPerson = memberCount ? totalExpense / memberCount : 0;
-
   const balances = (data.members || []).map(m => {
-    const deposited = (data.deposits || [])
-      .filter(d => d.member_id === m.id)
-      .reduce((sum, d) => sum + (d.amount || 0), 0);
+  const deposited = (data.deposits || [])
+    .filter(d => d.member_id === m.id)
+    .reduce((sum, d) => sum + (d.amount || 0), 0);
 
-    return {
-      memberId: m.id,
-      name: m.name,
-      deposits: deposited,
-      share: perPerson,
-      balance: deposited - perPerson
-    };
-  });
+  const share = (data.expenses || []).reduce((sum, e) => {
+    const split = (e.splits || []).find(s => s.memberId === m.id);
+    return sum + (split?.amount || 0);
+  }, 0);
+
+  return {
+    memberId: m.id,
+    name: m.name,
+    deposits: deposited,
+    share,
+    balance: deposited - share
+  };
+});
 
   setData(prev => ({
     ...prev,
@@ -253,6 +263,12 @@ useEffect(() => {
   }));
 }, [data?.members, data?.deposits, data?.expenses]);
 
+  // Persist full tour data to localStorage on every change
+  useEffect(() => {
+    if (!data) return;
+    localStorage.setItem('ts_tour_' + tourId, JSON.stringify(data));
+  }, [data, tourId]);
+
   const handleCopy = () => {
     const url = `${window.location.origin}${window.location.pathname}#tour-${tourId}`;
     navigator.clipboard.writeText(url);
@@ -263,23 +279,12 @@ useEffect(() => {
 
   const handleEnd = async () => {
   try {
-    setData(prev => ({
-      ...prev,
-      tour: {
-        ...prev.tour,
-        ended_at: new Date().toISOString()
-      }
-    }));
-
+    const endedAt = new Date().toISOString();
+    setData(prev => ({ ...prev, tour: { ...prev.tour, ended_at: endedAt } }));
     onTourEnded(tourId);
     setShowEndModal(false);
     showToast('Tour ended and locked 🔒');
-
-    // redirect to home
-    setTimeout(() => {
-      onBack();
-    }, 400);
-
+    onBack();
   } catch (e) {
     showToast('Error: ' + e.message);
   }
@@ -586,7 +591,11 @@ function exportJSON(tour, members, deposits, expenses, balances, settlements, su
 
 // ─── Feed Tab ─────────────────────────────────────────────────────────────────
 function FeedTab({ tourId, members, deposits, expenses, setData, onUpdate, showToast, locked }) {
+  const [expandedId, setExpandedId] = useState(null);
   const memberName = id => members.find(m => m.id === id)?.name || '?';
+
+  // Once ANY transaction exists, nothing in the timeline can be deleted
+  const hasTransactions = deposits.length > 0 || expenses.length > 0;
 
   const allItems = [
     ...deposits.map(d => ({ ...d, _kind: 'deposit' })),
@@ -594,6 +603,10 @@ function FeedTab({ tourId, members, deposits, expenses, setData, onUpdate, showT
   ].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
 
   const deleteItem = item => {
+    if (hasTransactions) {
+      showToast('Cannot delete after transactions');
+      return;
+    }
     if (item._kind === 'deposit') {
       setData(prev => ({ ...prev, deposits: prev.deposits.filter(d => d.id !== item.id) }));
     } else {
@@ -632,16 +645,37 @@ function FeedTab({ tourId, members, deposits, expenses, setData, onUpdate, showT
                   {' · '}{new Date(item.created_at).toLocaleString()}
                 </div>
               </div>
-              {/* Hide delete when locked */}
-              {!locked && (
+              {/* Delete only shown when no transactions exist and tour not locked */}
+              {!locked && !hasTransactions && (
                 <button className="del-btn" onClick={() => deleteItem(item)}>
                   <Icon d={ICONS.trash} size={14}/>
                 </button>
               )}
             </div>
-            <div className={`feed-amount ${item._kind === 'deposit' ? 'green' : 'red'}`}>
-              {item._kind === 'deposit' ? '+' : '-'}{fmt(item.amount)}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div className={`feed-amount ${item._kind === 'deposit' ? 'green' : 'red'}`}>
+                {item._kind === 'deposit' ? '+' : '-'}{fmt(item.amount)}
+              </div>
+              {item._kind === 'expense' && (item.splits || []).some(s => s.amount > 0) && (
+                <button
+                  onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                  style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', padding: '4px 6px', fontFamily: 'var(--font)' }}
+                >
+                  {expandedId === item.id ? 'Hide ▲' : 'Details ▼'}
+                </button>
+              )}
             </div>
+            {/* Per-member split breakdown */}
+            {item._kind === 'expense' && expandedId === item.id && (
+              <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                {(item.splits || []).filter(s => s.amount > 0).map(s => (
+                  <div key={s.memberId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--muted)', marginBottom: 5 }}>
+                    <span>{memberName(s.memberId)}</span>
+                    <span style={{ fontFamily: 'var(--mono)' }}>{fmt(s.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       ))}

@@ -83,6 +83,7 @@ body {
   cursor: pointer; font-family: var(--font); font-size: 15px;
   font-weight: 600; transition: all 0.2s ease;
 }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
 .btn-primary {
   background: var(--accent); color: #fff;
   width: 100%; justify-content: center;
@@ -286,6 +287,21 @@ body {
 }
 .del-btn { background: none; border: none; color: var(--muted); cursor: pointer; padding: 2px; flex-shrink: 0; transition: color 0.15s; }
 .del-btn:hover { color: var(--red); }
+.del-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.del-btn:disabled:hover { color: var(--muted); }
+.details-toggle {
+  background: none; border: none; color: var(--accent); cursor: pointer;
+  font-family: var(--font); font-size: 12px; font-weight: 600;
+  margin-top: 8px; padding: 0;
+}
+.split-details {
+  margin-top: 8px; border-top: 1px solid var(--border);
+  padding-top: 8px; display: grid; gap: 6px;
+}
+.split-detail-row {
+  display: flex; justify-content: space-between; gap: 12px;
+  font-size: 12px; color: var(--text2); font-family: var(--mono);
+}
 
 /* ── Settlement ── */
 .settle-card {
@@ -414,7 +430,7 @@ body {
 `;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-export const fmt = n => '৳' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const fmt = value => '৳' + Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
 export const COLORS = ['#f0a500','#30c970','#4a9eff','#e05a00','#8b5cf6','#f87171','#10b981','#60a5fa','#fb923c','#e879f9'];
 
 // ─── Icon ────────────────────────────────────────────────────────────────────

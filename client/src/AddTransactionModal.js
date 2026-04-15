@@ -16,7 +16,6 @@ export default function AddTransactionModal({
   showToast
 }) {
   const [type,          setType]          = useState('deposit');
-  const [memberId,      setMemberId]      = useState(members[0]?.id || '');
   const [amount,        setAmount]        = useState('');
   const [title,         setTitle]         = useState('');
   const [note,          setNote]          = useState('');
@@ -55,8 +54,12 @@ export default function AddTransactionModal({
   const addCustomMethod = async () => {
     if (!newMethod.trim()) return;
     try {
-      //await api.addPaymentMethod(tourId, newMethod.trim());
-      setPayMethod(newMethod.trim());
+      const method = newMethod.trim();
+      setData(prev => ({
+        ...prev,
+        paymentMethods: [...new Set([...(prev.paymentMethods || []), method])],
+      }));
+      setPayMethod(method);
       setNewMethod('');
       setShowNewMethod(false);
     } catch (e) {
@@ -80,7 +83,7 @@ export default function AddTransactionModal({
         member_id: mid,
         amount: amt,
         note,
-        paymentMethod: payMethod,
+        payment_method: payMethod,
         created_at: new Date().toISOString(),
       }));
 
@@ -118,7 +121,7 @@ export default function AddTransactionModal({
             paid_by: paidBy,
             split_type: splitType,
             splits: finalSplits,
-            paymentMethod: payMethod,
+            payment_method: payMethod,
             created_at: new Date().toISOString()
           }
         ]
