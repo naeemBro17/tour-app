@@ -414,7 +414,7 @@ body {
 `;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-export const fmt = n => '৳' + Number(n || 0).toFixed(2);
+export const fmt = n => '৳' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export const COLORS = ['#f0a500','#30c970','#4a9eff','#e05a00','#8b5cf6','#f87171','#10b981','#60a5fa','#fb923c','#e879f9'];
 
 // ─── Icon ────────────────────────────────────────────────────────────────────

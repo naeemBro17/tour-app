@@ -60,6 +60,12 @@ setActiveTourId(docRef.id);
     setActiveTourId(null);
   };
 
+  const handleTourEnded = id => {
+    setTours(prev => prev.map(t =>
+      t.id === id ? { ...t, ended_at: new Date().toISOString() } : t
+    ));
+  };
+
   return (
     <>
       <style>{STYLES}</style>
@@ -81,6 +87,7 @@ setActiveTourId(docRef.id);
               tourId={activeTourId}
               onBack={() => { setActiveTourId(null); window.location.hash = ''; }}
               onDeleted={() => handleDeleteTour(activeTourId)}
+              onTourEnded={handleTourEnded}
               showToast={showToast}
             />
         }
@@ -169,7 +176,7 @@ function CreateModal({ onCreate, onClose }) {
 }
 
 // ─── Tour Page ────────────────────────────────────────────────────────────────
-function TourPage({ tourId, onBack, onDeleted, showToast }) {
+function TourPage({ tourId, onBack, onDeleted, showToast, onTourEnded }) {
   const [data,          setData]          = useState(null);
   const [tab,           setTab]           = useState('feed');
   const [showAdd,       setShowAdd]       = useState(false);
@@ -255,18 +262,32 @@ useEffect(() => {
   };
 
   const handleEnd = async () => {
-    try {
-      //const snap = await api.endTour(tourId);
-      //setData(snap);
-      setShowEndModal(false);
-      showToast('Tour ended and locked 🔒');
-    } catch (e) { showToast('Error: ' + e.message); }
-  };
+  try {
+    setData(prev => ({
+      ...prev,
+      tour: {
+        ...prev.tour,
+        ended_at: new Date().toISOString()
+      }
+    }));
+
+    onTourEnded(tourId);
+    setShowEndModal(false);
+    showToast('Tour ended and locked 🔒');
+
+    // redirect to home
+    setTimeout(() => {
+      onBack();
+    }, 400);
+
+  } catch (e) {
+    showToast('Error: ' + e.message);
+  }
+};
 
   const handleReopen = async () => {
   try {
-    // const snap = await api.reopenTour(tourId);
-    // setData(snap);
+    setData(prev => ({ ...prev, tour: { ...prev.tour, ended_at: null } }));
     showToast('Tour reopened ✓');
   } catch (e) {
     showToast('Error: ' + e.message);
@@ -402,6 +423,7 @@ useEffect(() => {
       members={members}
       deposits={deposits}
       expenses={expenses}
+      setData={setData}
       onUpdate={() => {}}
       showToast={showToast}
       locked={isEnded}
@@ -563,7 +585,7 @@ function exportJSON(tour, members, deposits, expenses, balances, settlements, su
 }
 
 // ─── Feed Tab ─────────────────────────────────────────────────────────────────
-function FeedTab({ tourId, members, deposits, expenses, onUpdate, showToast, locked }) {
+function FeedTab({ tourId, members, deposits, expenses, setData, onUpdate, showToast, locked }) {
   const memberName = id => members.find(m => m.id === id)?.name || '?';
 
   const allItems = [
@@ -571,13 +593,13 @@ function FeedTab({ tourId, members, deposits, expenses, onUpdate, showToast, loc
     ...expenses.map(e => ({ ...e, _kind: 'expense' })),
   ].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
 
-  const deleteItem = async item => {
-    try {
-      //if (item._kind === 'deposit') await api.deleteDeposit(tourId, item.id);
-      //else await api.deleteExpense(tourId, item.id);
-      showToast('Deleted');
-      onUpdate();
-    } catch (e) { showToast('Error: ' + e.message); }
+  const deleteItem = item => {
+    if (item._kind === 'deposit') {
+      setData(prev => ({ ...prev, deposits: prev.deposits.filter(d => d.id !== item.id) }));
+    } else {
+      setData(prev => ({ ...prev, expenses: prev.expenses.filter(e => e.id !== item.id) }));
+    }
+    showToast('Deleted');
   };
 
   if (!allItems.length) return (
@@ -660,22 +682,20 @@ const addMember = async () => {
 
   const removeMember = async (id, name) => {
   try {
+    const hasDeposits = (data.deposits || []).some(d => d.member_id === id);
+    const hasExpenses = (data.expenses || []).some(e =>
+      e.paid_by === id || (e.splits || []).some(s => s.memberId === id)
+    );
+    if (hasDeposits || hasExpenses) {
+      showToast('Cannot remove member after transactions');
+      return;
+    }
     setData(prev => ({
       ...prev,
-
-      // remove member
       members: (prev.members || []).filter(m => m.id !== id),
-
-      // 🔥 remove related deposits
-      deposits: (prev.deposits || []).filter(d => d.member_id !== id),
-
-      // 🔥 remove related expenses (payer)
-      expenses: (prev.expenses || []).filter(e => e.paid_by !== id)
     }));
-
     showToast(`${name} removed`);
     onUpdate();
-
   } catch (e) {
     showToast('Error: ' + e.message);
   }

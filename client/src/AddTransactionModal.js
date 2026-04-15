@@ -30,6 +30,15 @@ export default function AddTransactionModal({
   const [newMethod,     setNewMethod]     = useState('');
   const [loading,       setLoading]       = useState(false);
   const [error,         setError]         = useState('');
+  // multi-member deposit: track which members are selected
+  const [selectedMemberIds, setSelectedMemberIds] = useState(
+    members.length > 0 ? [members[0].id] : []
+  );
+
+  const toggleMemberSelect = id =>
+    setSelectedMemberIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
 
   const allMethods = paymentMethods?.length ? paymentMethods : DEFAULT_METHODS;
   const amt = parseFloat(amount) || 0;
@@ -64,24 +73,27 @@ export default function AddTransactionModal({
     setLoading(true);
 
     if (type === 'deposit') {
-      if (!memberId) return setError('Select a member');
+      if (selectedMemberIds.length === 0) return setError('Select at least one member');
+
+      const newDeposits = selectedMemberIds.map(mid => ({
+        id: Date.now().toString() + '_' + mid,
+        member_id: mid,
+        amount: amt,
+        note,
+        paymentMethod: payMethod,
+        created_at: new Date().toISOString(),
+      }));
 
       setData(prev => ({
         ...prev,
-        deposits: [
-          ...(prev.deposits || []),
-          {
-            id: Date.now().toString(),
-            member_id: memberId,
-            amount: amt,
-            note,
-            paymentMethod: payMethod,
-            created_at: new Date().toISOString()
-          }
-        ]
+        deposits: [...(prev.deposits || []), ...newDeposits],
       }));
 
-      showToast('Deposit added ✓');
+      showToast(
+        newDeposits.length > 1
+          ? `Deposit added for ${newDeposits.length} members ✓`
+          : 'Deposit added ✓'
+      );
 
     } else {
       if (!title.trim()) return setError('Enter a title');
@@ -171,10 +183,25 @@ export default function AddTransactionModal({
         {type === 'deposit' && (
           <>
             <div className="field">
-              <label>Member</label>
-              <select value={memberId} onChange={e => setMemberId(e.target.value)}>
-                {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
+              <label>Member(s) — same amount each</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {members.map(m => (
+                  <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--surface)', border: `1px solid ${selectedMemberIds.includes(m.id) ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 10, cursor: 'pointer', transition: 'border-color 0.15s' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedMemberIds.includes(m.id)}
+                      onChange={() => toggleMemberSelect(m.id)}
+                      style={{ width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: 14, fontWeight: 500 }}>{m.name}</span>
+                  </label>
+                ))}
+              </div>
+              {selectedMemberIds.length > 1 && amt > 0 && (
+                <div className="info-box" style={{ marginTop: 10, marginBottom: 0 }}>
+                  {selectedMemberIds.length} members × {fmt(amt)} = {fmt(selectedMemberIds.length * amt)} total
+                </div>
+              )}
             </div>
             <div className="field">
               <label>Note (optional)</label>
