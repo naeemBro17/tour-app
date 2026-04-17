@@ -247,7 +247,7 @@ body {
   border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s;
 }
 .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-.tab-content { padding: 18px 20px; }
+.tab-content { padding: 18px 20px 100px; }
 
 /* ── Members ── */
 .member-row {

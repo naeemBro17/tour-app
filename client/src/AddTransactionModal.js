@@ -158,7 +158,7 @@ export default function AddTransactionModal({
         <div className="row">
           <div className="field">
             <label>Amount (৳)</label>
-            <input type="number" min="0" step="0.01" placeholder="0.00"
+            <input autoFocus type="number" min="0" step="0.01" placeholder="0.00"
               value={amount} onChange={e => setAmount(e.target.value)} />
           </div>
           <div className="field">

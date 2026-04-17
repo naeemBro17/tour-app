@@ -273,7 +273,7 @@ useEffect(() => {
     const url = `${window.location.origin}${window.location.pathname}#tour-${tourId}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
-    showToast('Link copied!');
+    showToast('Link copied ✓');
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -603,7 +603,8 @@ function FeedTab({ tourId, members, deposits, expenses, setData, onUpdate, showT
   ].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
 
   const deleteItem = item => {
-    if (hasTransactions) {
+    // When tour is not locked but has transactions, block deletion for data integrity
+    if (locked || hasTransactions) {
       showToast('Cannot delete after transactions');
       return;
     }
@@ -645,8 +646,8 @@ function FeedTab({ tourId, members, deposits, expenses, setData, onUpdate, showT
                   {' · '}{new Date(item.created_at).toLocaleString()}
                 </div>
               </div>
-              {/* Delete only shown when no transactions exist and tour not locked */}
-              {!locked && !hasTransactions && (
+              {/* Show delete: always when locked, or when no transactions yet */}
+              {(locked || !hasTransactions) && (
                 <button className="del-btn" onClick={() => deleteItem(item)}>
                   <Icon d={ICONS.trash} size={14}/>
                 </button>
@@ -687,16 +688,28 @@ function FeedTab({ tourId, members, deposits, expenses, setData, onUpdate, showT
 function MembersTab({ data, setData, balances, onUpdate, showToast, locked }) {
   const [newName, setNewName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [memberError, setMemberError] = useState('');
 
 const addMember = async () => {
-  if (!newName.trim()) return;
-
+  const trimmed = newName.trim();
+  if (!trimmed) {
+    setMemberError('Enter valid name');
+    return;
+  }
+  const isDuplicate = (data?.members || []).some(
+    m => m.name.toLowerCase() === trimmed.toLowerCase()
+  );
+  if (isDuplicate) {
+    setMemberError('Member already exists');
+    return;
+  }
+  setMemberError('');
   setLoading(true);
 
   try {
     const newMember = {
       id: Date.now().toString(),
-      name: newName.trim()
+      name: trimmed
     };
 
     setData(prev => ({
@@ -705,7 +718,7 @@ const addMember = async () => {
     }));
 
     setNewName('');
-    showToast(`${newName.trim()} added ✓`);
+    showToast(`${trimmed} added ✓`);
     onUpdate();
   } catch (e) {
     showToast('Error: ' + e.message);
@@ -744,16 +757,24 @@ const addMember = async () => {
     <div>
       {/* Hide add form when locked */}
       {!locked && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          <input
-            style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 15, outline: 'none' }}
-            placeholder="Member name…" value={newName}
-            onChange={e => setNewName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addMember()}
-          />
-          <button className="btn btn-ghost" onClick={addMember} disabled={loading}>
-            <Icon d={ICONS.plus}/>
-          </button>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              autoFocus
+              style={{ flex: 1, background: 'var(--surface)', border: `1px solid ${memberError ? 'var(--red)' : 'var(--border)'}`, borderRadius: 12, padding: '12px 16px', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 15, outline: 'none' }}
+              placeholder="Member name…" value={newName}
+              onChange={e => { setNewName(e.target.value); setMemberError(''); }}
+              onKeyDown={e => e.key === 'Enter' && addMember()}
+            />
+            <button className="btn btn-ghost" onClick={addMember} disabled={loading}>
+              <Icon d={ICONS.plus}/>
+            </button>
+          </div>
+          {memberError && (
+            <div style={{ fontSize: 12, color: 'var(--red)', marginTop: 6, paddingLeft: 4 }}>
+              {memberError}
+            </div>
+          )}
         </div>
       )}
 
