@@ -60,7 +60,7 @@ export default function App() {
 
   const handleTourEnded = id => {
     setTours(prev => prev.map(t =>
-      t.id === id ? { ...t, ended_at: new Date().toISOString() } : t
+      t.id === id ? { ...t, ended_at: new Date().toISOString(), isLocked: true } : t
     ));
   };
 
@@ -194,7 +194,7 @@ function TourPage({ tourId, onBack, onDeleted, showToast, onTourEnded }) {
 
 // Load tour data from localStorage, or initialize fresh with correct name
 useEffect(() => {
-  // Always resolve real name from ts_tours first — highest priority source
+  // ALWAYS resolve real name from ts_tours — this is the authoritative source
   let realName = '';
   try {
     const savedTours = JSON.parse(localStorage.getItem('ts_tours')) || [];
@@ -206,18 +206,19 @@ useEffect(() => {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      // Always override stored name with the authoritative name from tours list
+      // Always override stored name with authoritative name — never keep stale "Tour"
       if (parsed?.tour) {
-        parsed.tour.name = realName || parsed.tour.name || 'Tour';
+        parsed.tour.name = realName || parsed.tour.name;
       }
       setData(parsed);
       setConnected(true);
       return;
     } catch {}
   }
-  // Fresh tour — use resolved name or fallback
+  // Fresh tour — initialize immediately with correct name from ts_tours
+  const freshName = realName; // realName must exist; tours list was just updated
   setData({
-    tour: { id: tourId, name: realName || 'Tour' },
+    tour: { id: tourId, name: freshName },
     members: [],
     deposits: [],
     expenses: [],
@@ -290,7 +291,13 @@ useEffect(() => {
   const handleEnd = async () => {
   try {
     const endedAt = new Date().toISOString();
-    setData(prev => ({ ...prev, tour: { ...prev.tour, ended_at: endedAt, isLocked: true } }));
+    const updatedData = prev => ({ ...prev, tour: { ...prev.tour, ended_at: endedAt, isLocked: true } });
+    setData(prev => {
+      const next = updatedData(prev);
+      // Persist immediately so isLocked survives before onBack unmounts component
+      localStorage.setItem('ts_tour_' + tourId, JSON.stringify(next));
+      return next;
+    });
     onTourEnded(tourId);
     setShowEndModal(false);
     showToast('Tour ended and locked 🔒');
@@ -478,7 +485,7 @@ useEffect(() => {
 </div>
 
     {/* FAB — hidden when locked */}
-{!data?.tour?.isLocked && (
+{!locked && (
   <button
     className="fab"
     onClick={() => setShowAdd(true)}
@@ -487,7 +494,7 @@ useEffect(() => {
   </button>
 )}
 
-{showAdd && !data?.tour?.isLocked && (
+{showAdd && !locked && (
   <AddTransactionModal
     data={data}                 // ✅ ADD
     setData={setData}           // ✅ ADD
@@ -625,12 +632,9 @@ function FeedTab({ tourId, members, deposits, expenses, setData, onUpdate, showT
   ].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
 
   const deleteItem = item => {
-    if (locked) {
-      showToast('Tour is locked 🔒 — view only. You can delete this tour if needed.');
-      return;
-    }
-    if (hasTransactions) {
-      showToast('Cannot delete after transactions');
+    if (locked || hasTransactions) {
+      if (locked) showToast('Tour is locked 🔒 — view only. You can delete this tour if needed.');
+      else showToast('Cannot delete after transactions');
       return;
     }
     if (item._kind === 'deposit') {
