@@ -43,10 +43,15 @@ export default function App() {
     try {
       const id = Date.now().toString();
       const newTour = { id, name, created_at: new Date().toISOString() };
-      setTours(prev => [newTour, ...prev]);
-      setActiveTourId(id);
+      // Write to localStorage SYNCHRONOUSLY before TourPage mounts and reads ts_tours
+      const existing = (() => { try { return JSON.parse(localStorage.getItem('ts_tours')) || []; } catch { return []; } })();
+      const updated = [newTour, ...existing];
+      localStorage.setItem('ts_tours', JSON.stringify(updated));
+      setTours(updated);
       setShowCreate(false);
       showToast('Tour created! 🎉');
+      window.location.hash = '#tour-' + id;
+      setActiveTourId(id);
     } catch (e) {
       showToast('Error: ' + e.message);
     }
@@ -55,6 +60,7 @@ export default function App() {
   const handleDeleteTour = id => {
     setTours(prev => prev.filter(t => t.id !== id));
     localStorage.removeItem('ts_tour_' + id);
+    window.location.hash = '';
     setActiveTourId(null);
   };
 
@@ -78,7 +84,7 @@ export default function App() {
         {!activeTourId
           ? <HomePage
               tours={tours} loading={loading}
-              onSelect={setActiveTourId}
+              onSelect={id => { window.location.hash = '#tour-' + id; setActiveTourId(id); }}
               onNew={() => setShowCreate(true)}
             />
           : <TourPage
@@ -194,7 +200,7 @@ function TourPage({ tourId, onBack, onDeleted, showToast, onTourEnded }) {
 
 // Load tour data from localStorage, or initialize fresh with correct name
 useEffect(() => {
-  // ALWAYS resolve real name from ts_tours — this is the authoritative source
+  // ALWAYS resolve real name from ts_tours — authoritative source
   let realName = '';
   try {
     const savedTours = JSON.parse(localStorage.getItem('ts_tours')) || [];
@@ -206,19 +212,18 @@ useEffect(() => {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      // Always override stored name with authoritative name — never keep stale "Tour"
-      if (parsed?.tour) {
-        parsed.tour.name = realName || parsed.tour.name;
+      // Always override name with authoritative name from ts_tours
+      if (parsed?.tour && realName) {
+        parsed.tour.name = realName;
       }
       setData(parsed);
       setConnected(true);
       return;
     } catch {}
   }
-  // Fresh tour — initialize immediately with correct name from ts_tours
-  const freshName = realName; // realName must exist; tours list was just updated
-  setData({
-    tour: { id: tourId, name: freshName },
+  // Fresh tour — build initial data with correct name and write to localStorage immediately
+  const freshData = {
+    tour: { id: tourId, name: realName },
     members: [],
     deposits: [],
     expenses: [],
@@ -226,11 +231,13 @@ useEffect(() => {
     balances: [],
     settlements: [],
     summary: { totalDeposit: 0, totalExpense: 0, remaining: 0 }
-  });
+  };
+  localStorage.setItem('ts_tour_' + tourId, JSON.stringify(freshData));
+  setData(freshData);
   setConnected(true);
 }, [tourId]);
 
-// 🔥 CALCULATION LOGIC (ADD THIS)
+// 🔥 CALCULATION LOGIC
 useEffect(() => {
   if (!data) return;
 
@@ -263,15 +270,20 @@ useEffect(() => {
   };
 });
 
-  setData(prev => ({
-    ...prev,
-    balances,
-    summary: {
-      totalDeposit,
-      totalExpense,
-      remaining: totalDeposit - totalExpense
-    }
-  }));
+  // Use functional update to never lose isLocked or any other tour fields
+  setData(prev => {
+    if (!prev) return prev;
+    return {
+      ...prev,
+      // tour object preserved entirely — never overwritten here
+      balances,
+      summary: {
+        totalDeposit,
+        totalExpense,
+        remaining: totalDeposit - totalExpense
+      }
+    };
+  });
 }, [data?.members, data?.deposits, data?.expenses]);
 
   // Persist full tour data to localStorage on every change
@@ -291,17 +303,18 @@ useEffect(() => {
   const handleEnd = async () => {
   try {
     const endedAt = new Date().toISOString();
-    const updatedData = prev => ({ ...prev, tour: { ...prev.tour, ended_at: endedAt, isLocked: true } });
-    setData(prev => {
-      const next = updatedData(prev);
-      // Persist immediately so isLocked survives before onBack unmounts component
-      localStorage.setItem('ts_tour_' + tourId, JSON.stringify(next));
-      return next;
-    });
+    // Read current data fresh, apply lock, write to localStorage synchronously
+    const currentRaw = localStorage.getItem('ts_tour_' + tourId);
+    const current = currentRaw ? JSON.parse(currentRaw) : {};
+    const next = { ...current, tour: { ...(current.tour || {}), ended_at: endedAt, isLocked: true } };
+    localStorage.setItem('ts_tour_' + tourId, JSON.stringify(next));
+    // Update React state
+    setData(next);
+    // Update tours list to show ended badge
     onTourEnded(tourId);
     setShowEndModal(false);
     showToast('Tour ended and locked 🔒');
-    onBack();
+    // Stay on the page — show locked view, no navigation
   } catch (e) {
     showToast('Error: ' + e.message);
   }
