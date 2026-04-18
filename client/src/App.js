@@ -126,7 +126,10 @@ function HomePage({ tours, loading, onSelect, onNew }) {
                   {t.ended_at && ` · Ended ${new Date(t.ended_at).toLocaleDateString()}`}
                 </div>
               </div>
-              <Icon d={ICONS.arrow} size={16} />
+              {t.ended_at
+                ? <span style={{ fontSize: 16 }}>🔒</span>
+                : <Icon d={ICONS.arrow} size={16} />
+              }
             </div>
           ))}
         </div>
@@ -191,21 +194,29 @@ function TourPage({ tourId, onBack, onDeleted, showToast, onTourEnded }) {
 
 // Load tour data from localStorage, or initialize fresh with correct name
 useEffect(() => {
+  // Resolve real name from tours list — highest priority
+  let realName = '';
+  try {
+    const savedTours = JSON.parse(localStorage.getItem('ts_tours')) || [];
+    const found = savedTours.find(t => t.id === tourId);
+    if (found?.name) realName = found.name;
+  } catch {}
+
   const saved = localStorage.getItem('ts_tour_' + tourId);
   if (saved) {
     try {
-      setData(JSON.parse(saved));
+      const parsed = JSON.parse(saved);
+      // Patch name from tours list if it's better than what's stored
+      if (realName && parsed?.tour) {
+        parsed.tour.name = realName;
+      }
+      setData(parsed);
       setConnected(true);
       return;
     } catch {}
   }
-  // Fresh tour — resolve name from tours list in localStorage
-  let tourName = 'Tour';
-  try {
-    const savedTours = JSON.parse(localStorage.getItem('ts_tours')) || [];
-    const found = savedTours.find(t => t.id === tourId);
-    if (found) tourName = found.name;
-  } catch {}
+  // Fresh tour — use resolved name or fallback
+  const tourName = realName || 'Tour';
   setData({
     tour: { id: tourId, name: tourName },
     members: [],
@@ -351,7 +362,7 @@ useEffect(() => {
       {isEnded && (
         <div className="locked-banner">
           <span className="locked-banner-text">
-            🔒 This tour is finalized. Editing is disabled.
+            Tour ended. You can only view or delete this tour.
           </span>
           <button className="reopen-btn" onClick={handleReopen}>Reopen</button>
         </div>
@@ -465,7 +476,7 @@ useEffect(() => {
       {/* FAB — hidden when locked */}
       {!isEnded && <button className="fab" onClick={() => setShowAdd(true)}>+</button>}
 
-{showAdd && (
+{showAdd && !isEnded && (
   <AddTransactionModal
     data={data}                 // ✅ ADD
     setData={setData}           // ✅ ADD
@@ -603,8 +614,11 @@ function FeedTab({ tourId, members, deposits, expenses, setData, onUpdate, showT
   ].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
 
   const deleteItem = item => {
-    // When tour is not locked but has transactions, block deletion for data integrity
-    if (locked || hasTransactions) {
+    if (locked) {
+      showToast('Tour is locked 🔒 — view only. You can delete this tour if needed.');
+      return;
+    }
+    if (hasTransactions) {
       showToast('Cannot delete after transactions');
       return;
     }
@@ -646,8 +660,8 @@ function FeedTab({ tourId, members, deposits, expenses, setData, onUpdate, showT
                   {' · '}{new Date(item.created_at).toLocaleString()}
                 </div>
               </div>
-              {/* Show delete: always when locked, or when no transactions yet */}
-              {(locked || !hasTransactions) && (
+              {/* Delete only when not locked and no transactions yet */}
+              {!locked && !hasTransactions && (
                 <button className="del-btn" onClick={() => deleteItem(item)}>
                   <Icon d={ICONS.trash} size={14}/>
                 </button>
